@@ -27,6 +27,7 @@ export default function DashboardPage() {
       title: '',
       description: '',
       scheduledDate: dateStr,
+      endDate: dateStr,
       startTime: null,
       endTime: null,
       allDay: true,
@@ -36,8 +37,10 @@ export default function DashboardPage() {
       createdAt: new Date().toISOString(),
       location: '',
       attendees: [],
+      attachments: [],
       groupId: null,
       groupName: null,
+      repeatType: 'none',
     };
     setSelectedEvent(newEvent);
     setIsModalOpen(true);
