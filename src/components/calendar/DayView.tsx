@@ -27,9 +27,29 @@ const WEEKDAY_NAMES = ['일요일', '월요일', '화요일', '수요일', '목�
 export default function DayView({ currentDate, onEventClick, onCreateEvent }: DayViewProps) {
     const allEvents = useEventStore(s => s.events);
     const dateKey = toDateKey(currentDate);
-    const dayEvents = allEvents.filter(e => e.scheduledDate === dateKey);
+    const dayEvents = allEvents.filter(e => {
+        const start = e.scheduledDate;
+        const end = e.endDate || e.scheduledDate;
+        return dateKey >= start && dateKey <= end;
+    });
+
     const allDayEvents = dayEvents.filter(e => e.allDay);
-    const timedEvents = dayEvents.filter(e => !e.allDay && e.startTime);
+    
+    // 시간 지정 일정 중 오늘에 해당하는 부분 계산
+    const timedEvents = dayEvents.filter(e => !e.allDay && e.startTime).map(ev => {
+        const isStartDay = ev.scheduledDate === dateKey;
+        const isEndDay = (ev.endDate || ev.scheduledDate) === dateKey;
+        
+        let displayStart = ev.startTime!;
+        let displayEnd = ev.endTime || '';
+
+        // 시작일이 아니면 00:00부터 시작
+        if (!isStartDay) displayStart = '00:00';
+        // 종료일이 아니면 24:00까지 (실제로 23:59로 처리하거나 렌더링 시 끝까지 채움)
+        if (!isEndDay) displayEnd = '23:59';
+
+        return { ...ev, displayStart, displayEnd };
+    });
     const todayKey = toDateKey(new Date());
     const isToday = dateKey === todayKey;
 
@@ -79,8 +99,8 @@ export default function DayView({ currentDate, onEventClick, onCreateEvent }: Da
 
                     {/* 이벤트 블록 */}
                     {timedEvents.map(ev => {
-                        const startMin = timeToMinutes(ev.startTime!);
-                        const endMin = ev.endTime ? timeToMinutes(ev.endTime) : startMin + 60;
+                        const startMin = timeToMinutes(ev.displayStart);
+                        const endMin = ev.displayEnd ? timeToMinutes(ev.displayEnd) : startMin + 60;
                         const duration = Math.max(endMin - startMin, 30);
                         const top = (startMin / (24 * 60)) * 100;
                         const height = (duration / (24 * 60)) * 100;
@@ -97,7 +117,7 @@ export default function DayView({ currentDate, onEventClick, onCreateEvent }: Da
                                 }}
                                 onClick={e => { e.stopPropagation(); onEventClick(ev); }}
                             >
-                                <div className="day-view__event-time">{ev.startTime} – {ev.endTime || ''}</div>
+                                <div className="day-view__event-time">{ev.displayStart} – {ev.displayEnd}</div>
                                 <div className="day-view__event-title">{ev.title}</div>
                                 {ev.location && <div className="day-view__event-loc">📍 {ev.location}</div>}
                                 {ev.attendees.length > 0 && (

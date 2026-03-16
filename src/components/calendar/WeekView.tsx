@@ -181,8 +181,14 @@ export default function WeekView({ currentDate, onEventClick, onCreateEvent }: W
 
                     {/* 7일 칼럼 */}
                     {weekDates.map((date, colIdx) => {
-                        const dayEvents = getEventsForDate(date).filter(e => !e.allDay && e.startTime);
-                        const isToday = toDateKey(date) === todayKey;
+                        const dayKey = toDateKey(date);
+                        const dayEvents = allEvents.filter(e => {
+                            if (e.allDay || !e.startTime) return false;
+                            const start = e.scheduledDate;
+                            const end = e.endDate || e.scheduledDate;
+                            return dayKey >= start && dayKey <= end;
+                        });
+                        const isToday = dayKey === todayKey;
 
                         return HOURS.map(h => (
                             <div
@@ -193,8 +199,17 @@ export default function WeekView({ currentDate, onEventClick, onCreateEvent }: W
                             />
                         )).concat(
                             dayEvents.map(ev => {
-                                const startMin = timeToMinutes(ev.startTime!);
-                                const endMin = ev.endTime ? timeToMinutes(ev.endTime) : startMin + 60;
+                                const isStartDay = ev.scheduledDate === dayKey;
+                                const isEndDay = (ev.endDate || ev.scheduledDate) === dayKey;
+
+                                let displayStart = ev.startTime!;
+                                let displayEnd = ev.endTime || '';
+
+                                if (!isStartDay) displayStart = '00:00';
+                                if (!isEndDay) displayEnd = '23:59';
+
+                                const startMin = timeToMinutes(displayStart);
+                                const endMin = displayEnd ? timeToMinutes(displayEnd) : startMin + 60;
                                 const topPct = (startMin / 60);
                                 const heightPct = Math.max((endMin - startMin) / 60, 0.5);
                                 const color = getEventColor(ev.colorId);
@@ -212,7 +227,7 @@ export default function WeekView({ currentDate, onEventClick, onCreateEvent }: W
                                         }}
                                         onClick={e => { e.stopPropagation(); onEventClick(ev); }}
                                     >
-                                        <span className="week-view__event-time">{ev.startTime}</span>
+                                        <span className="week-view__event-time">{displayStart}</span>
                                         <span className="week-view__event-title">{ev.title}</span>
                                         {ev.location && <span className="week-view__event-loc">📍 {ev.location}</span>}
                                     </div>
