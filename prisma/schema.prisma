@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── 사용자 ───
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  displayName   String?   @map("display_name")
+  avatarUrl     String?   @map("avatar_url")
+  googleId      String?   @unique @map("google_id")
+  
+  // NextAuth standard fields
+  name          String?
+  emailVerified DateTime? @map("email_verified")
+  image         String?
+  
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  accounts      Account[]
+  sessions      Session[]
+
+  channelMembers  ChannelMember[]
+  ownedStages     ProductionStage[]
+
+  @@map("users")
+}
+
+// ─── NextAuth 인증을 위한 추가 모델 ───
+model Account {
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+ 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+ 
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+  @@id([provider, providerAccountId])
+  @@map("accounts")
+}
+ 
+model Session {
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("sessions")
+}
+ 
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+ 
+  @@id([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─── 채널 (최상위 조직) ───
+model Channel {
+  id               String   @id @default(uuid())
+  youtubeChannelId String   @unique @map("youtube_channel_id")
+  displayName      String   @map("display_name")
+  profileImageUrl  String?  @map("profile_image_url")
+  personaConfig    Json?    @map("persona_config") @db.JsonB
+  driveRootPath    String?  @map("drive_root_path")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  members          ChannelMember[]
+  productionStages ProductionStage[]
+
+  @@map("channels")
+}
+
+// ─── 채널 멤버십 (M:N) ───
+model ChannelMember {
+  id        String   @id @default(uuid())
+  channelId String   @map("channel_id")
+  userId    String   @map("user_id")
+  role      MemberRole @default(MEMBER)
+  joinedAt  DateTime @default(now()) @map("joined_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, userId])
+  @@map("channel_members")
+}
+
+// ─── 콘텐츠 제작 단위 ───
+model ProductionStage {
+  id            String      @id @default(uuid())
+  channelId     String      @map("channel_id")
+  title         String
+  vividStatus   Boolean     @default(false) @map("vivid_status")
+  currentTab    StageTab    @default(PLANNING) @map("current_tab")
+  ownerId       String?     @map("owner_id")
+  scheduledDate DateTime?   @map("scheduled_date")
+  youtubeVideoId String?    @map("youtube_video_id")
+  deletedAt     DateTime?   @map("deleted_at")
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  channel Channel      @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  owner   User?        @relation(fields: [ownerId], references: [id])
+  details StageDetail?
+
+  @@index([channelId])
+  @@index([channelId, scheduledDate])
+  @@map("production_stages")
+}
+
+// ─── 탭별 상세 데이터 ───
+model StageDetail {
+  id       String @id @default(uuid())
+  stageId  String @unique @map("stage_id")
+
+  // 기획 데이터
+  conceptText   String? @map("concept_text")
+  intentText    String? @map("intent_text")
+  tags          String[] @default([])
+  aiSuggestions Json?    @map("ai_suggestions") @db.JsonB
+
+  // 촬영 데이터
+  location       String?
+  assetPath      String? @map("asset_path")
+  productionNote String? @map("production_note")
+
+  // 업로드 데이터
+  finalTitle       String? @map("final_title")
+  finalDescription String? @map("final_description")
+  methodAActive    Boolean @default(false) @map("method_a_active")
+
+  // 파일 정보
+  detectedFileName String? @map("detected_file_name")
+  fileExtension    String? @map("file_extension")
+  fileSize         BigInt? @map("file_size")
+
+  stage ProductionStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@map("stage_details")
+}
+
+// ─── Enums ───
+enum MemberRole {
+  ADMIN
+  EDITOR
+  MEMBER
+}
+
+enum StageTab {
+  PLANNING
+  PRODUCTION
+  UPLOAD
+}
