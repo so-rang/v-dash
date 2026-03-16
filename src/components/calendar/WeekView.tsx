@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useEventStore, getEventColor } from '@/store/event-store';
 import type { CalendarEvent } from '@/types/stage';
 import { Plus } from 'lucide-react';
@@ -40,12 +40,84 @@ export default function WeekView({ currentDate, onEventClick, onCreateEvent }: W
     const weekDates = getWeekDates(currentDate);
     const todayKey = toDateKey(new Date());
 
+    // 레인(lane) 계산: 종일 일정
+    const allDayEventsWithLanes = useMemo(() => {
+        const rangeStartKey = toDateKey(weekDates[0]);
+        const rangeEndKey = toDateKey(weekDates[6]);
+
+        const filtered = allEvents.filter(e => {
+            if (!e.allDay) return false;
+            const start = e.scheduledDate;
+            const end = e.endDate || e.scheduledDate;
+            return (start <= rangeEndKey && end >= rangeStartKey);
+        });
+
+        const getDuration = (e: CalendarEvent) => {
+            if (!e.endDate) return 1;
+            const d1 = new Date(e.scheduledDate);
+            const d2 = new Date(e.endDate);
+            return Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        };
+
+        const sorted = [...filtered].sort((a, b) => {
+            const durA = getDuration(a);
+            const durB = getDuration(b);
+            if (durB !== durA) return durB - durA;
+            return a.scheduledDate.localeCompare(b.scheduledDate);
+        });
+
+        const lanes: (CalendarEvent & { lane: number })[] = [];
+        const laneOccupancy: Record<number, string[]> = {};
+
+        sorted.forEach(event => {
+            let laneIndex = 0;
+            const eventDates: string[] = [];
+            const start = new Date(event.scheduledDate);
+            const end = new Date(event.endDate || event.scheduledDate);
+            const curr = new Date(start);
+            while (curr <= end) {
+                eventDates.push(toDateKey(curr));
+                curr.setDate(curr.getDate() + 1);
+            }
+
+            while (true) {
+                const occupiedDates = laneOccupancy[laneIndex] || [];
+                const isConflict = eventDates.some(d => occupiedDates.includes(d));
+                if (!isConflict) {
+                    laneOccupancy[laneIndex] = [...occupiedDates, ...eventDates];
+                    lanes.push({ ...event, lane: laneIndex });
+                    break;
+                }
+                laneIndex++;
+                if (laneIndex > 20) break;
+            }
+        });
+
+        return lanes;
+    }, [allEvents, weekDates]);
+
     const getEventsForDate = useCallback(
         (date: Date) => {
             const key = toDateKey(date);
-            return allEvents.filter(e => e.scheduledDate === key);
+            return allEvents.filter(e => {
+                const start = e.scheduledDate;
+                const end = e.endDate || e.scheduledDate;
+                return key >= start && key <= end;
+            });
         },
         [allEvents]
+    );
+
+    const getAllDayEventsForDate = useCallback(
+        (date: Date) => {
+            const key = toDateKey(date);
+            return allDayEventsWithLanes.filter(e => {
+                const start = e.scheduledDate;
+                const end = e.endDate || e.scheduledDate;
+                return key >= start && key <= end;
+            });
+        },
+        [allDayEventsWithLanes]
     );
 
     const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
@@ -56,19 +128,42 @@ export default function WeekView({ currentDate, onEventClick, onCreateEvent }: W
             <div className="week-view__allday-row">
                 <div className="week-view__time-gutter week-view__time-gutter--allday">종일</div>
                 {weekDates.map((date, i) => {
-                    const dayEvents = getEventsForDate(date).filter(e => e.allDay);
+                    const dateKey = toDateKey(date);
+                    const dayEvents = getAllDayEventsForDate(date);
+                    const maxLane = dayEvents.length > 0 ? Math.max(...dayEvents.map(e => e.lane)) : -1;
+
                     return (
-                        <div key={i} className={`week-view__allday-cell ${toDateKey(date) === todayKey ? 'week-view__allday-cell--today' : ''}`} onClick={() => onCreateEvent(date)}>
-                            {dayEvents.map(ev => (
-                                <div
-                                    key={ev.id}
-                                    className="week-view__allday-chip"
-                                    style={{ background: getEventColor(ev.colorId) }}
-                                    onClick={e => { e.stopPropagation(); onEventClick(ev); }}
-                                >
-                                    {ev.title}
-                                </div>
-                            ))}
+                        <div key={i} className={`week-view__allday-cell ${dateKey === todayKey ? 'week-view__allday-cell--today' : ''}`} onClick={() => onCreateEvent(date)}>
+                            {Array.from({ length: maxLane + 1 }).map((_, laneIdx) => {
+                                const ev = dayEvents.find(e => e.lane === laneIdx);
+                                if (!ev) return <div key={laneIdx} style={{ height: 24, marginBottom: 2 }} />;
+
+                                const isStart = ev.scheduledDate === dateKey;
+                                const isEnd = (ev.endDate || ev.scheduledDate) === dateKey;
+                                const isSun = i === 0;
+
+                                return (
+                                    <div
+                                        key={ev.id}
+                                        className={`week-view__allday-chip ${!isStart ? 'week-view__allday-chip--continues-left' : ''} ${!isEnd ? 'week-view__allday-chip--continues-right' : ''}`}
+                                        style={{
+                                            background: getEventColor(ev.colorId),
+                                            borderTopLeftRadius: isStart ? 4 : 0,
+                                            borderBottomLeftRadius: isStart ? 4 : 0,
+                                            borderTopRightRadius: isEnd ? 4 : 0,
+                                            borderBottomRightRadius: isEnd ? 4 : 0,
+                                            marginLeft: isStart ? 0 : -1,
+                                            marginRight: isEnd ? 1 : 0,
+                                            width: isStart || isEnd ? 'auto' : 'calc(100% + 2px)',
+                                        }}
+                                        onClick={e => { e.stopPropagation(); onEventClick(ev); }}
+                                    >
+                                        <span className="truncate" style={{ visibility: (isStart || isSun) ? 'visible' : 'hidden' }}>
+                                            {ev.title}
+                                        </span>
+                                    </div>
+                                );
+                            })}
                         </div>
                     );
                 })}

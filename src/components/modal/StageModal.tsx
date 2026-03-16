@@ -48,9 +48,19 @@ export default function EventModal({ event, onClose }: EventModalProps) {
     const [scheduledDate, setScheduledDate] = useState(event?.scheduledDate || '');
     const [endDate, setEndDate] = useState(event?.endDate || '');
     const [showEndDate, setShowEndDate] = useState(!!event?.endDate);
-    const [allDay, setAllDay] = useState(event?.allDay ?? true);
-    const [startTime, setStartTime] = useState(event?.startTime || '09:00');
-    const [endTime, setEndTime] = useState(event?.endTime || '10:00');
+    const [allDay, setAllDay] = useState(event?.allDay ?? false);
+    
+    // 현재 시간 기준으로 기본 엑스트라 타임 생성 (신규 일정용)
+    const now = new Date();
+    now.setMinutes(0, 0, 0); 
+    const nextHour = new Date(now);
+    nextHour.setHours(nextHour.getHours() + 1);
+    
+    const padTime = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    
+    // 기존 일정이면 기존 시간을 쓰고, 없으면(신규) 현재 시간 사용
+    const [startTime, setStartTime] = useState(event?.startTime || padTime(now));
+    const [endTime, setEndTime] = useState(event?.endTime || padTime(nextHour));
     const [colorId, setColorId] = useState<EventColorId>(event?.colorId || 'peacock');
     const [showColorPicker, setShowColorPicker] = useState(false);
     const [location, setLocation] = useState(event?.location || '');

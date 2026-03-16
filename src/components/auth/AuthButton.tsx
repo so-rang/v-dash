@@ -40,7 +40,7 @@ export default function AuthButton({ collapsed }: AuthButtonProps) {
             <div className="auth-btn auth-btn--logged-in">
                 <div className="auth-btn__user">
                     {session.user.image ? (
-                        <img src={session.user.image} alt="" className="auth-btn__avatar" />
+                        <img src={session.user.image} alt="" className="auth-btn__avatar" referrerPolicy="no-referrer" />
                     ) : (
                         <div className="auth-btn__avatar auth-btn__avatar--placeholder">
                             {session.user.name?.[0] || '?'}

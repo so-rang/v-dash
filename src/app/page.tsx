@@ -30,7 +30,7 @@ export default function DashboardPage() {
       endDate: dateStr,
       startTime: null,
       endTime: null,
-      allDay: true,
+      allDay: false,
       colorId: 'peacock' as EventColorId,
       completed: false,
       deletedAt: null,

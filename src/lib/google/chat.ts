@@ -5,7 +5,7 @@
  */
 
 import { google } from 'googleapis';
-import { getOAuth2Client } from './token';
+import { createOAuth2Client } from './token';
 
 const chat = google.chat('v1');
 
@@ -21,7 +21,7 @@ export async function sendBriefingCard(
         trendKeywords?: string[];
     }
 ) {
-    const auth = getOAuth2Client();
+    const auth = createOAuth2Client();
 
     const sections = [];
 
@@ -106,7 +106,7 @@ export async function sendApprovalCard(
         similarity: number;
     }
 ) {
-    const auth = getOAuth2Client();
+    const auth = createOAuth2Client();
 
     const message = {
         cardsV2: [
@@ -215,7 +215,7 @@ export async function sendErrorNotification(
     spaceId: string,
     message: string
 ) {
-    const auth = getOAuth2Client();
+    const auth = createOAuth2Client();
 
     const response = await chat.spaces.messages.create({
         auth,

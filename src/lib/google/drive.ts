@@ -5,7 +5,7 @@
  */
 
 import { google } from 'googleapis';
-import { getOAuth2Client } from './token';
+import { createOAuth2Client } from './token';
 
 const drive = google.drive('v3');
 
@@ -13,7 +13,7 @@ const drive = google.drive('v3');
  * 특정 폴더 내 파일 목록 조회
  */
 export async function listFilesInFolder(folderId: string) {
-    const auth = getOAuth2Client();
+    const auth = createOAuth2Client();
     const response = await drive.files.list({
         auth,
         q: `'${folderId}' in parents and trashed = false`,
@@ -27,7 +27,7 @@ export async function listFilesInFolder(folderId: string) {
  * 변경사항 감시를 위한 start page token 가져오기
  */
 export async function getStartPageToken(): Promise<string> {
-    const auth = getOAuth2Client();
+    const auth = createOAuth2Client();
     const response = await drive.changes.getStartPageToken({ auth });
     return response.data.startPageToken || '';
 }
@@ -36,7 +36,7 @@ export async function getStartPageToken(): Promise<string> {
  * 변경사항 조회 (폴링 방식)
  */
 export async function listChanges(pageToken: string) {
-    const auth = getOAuth2Client();
+    const auth = createOAuth2Client();
     const response = await drive.changes.list({
         auth,
         pageToken,
@@ -58,7 +58,7 @@ export async function moveFile(
     currentParentId: string,
     newParentId: string
 ) {
-    const auth = getOAuth2Client();
+    const auth = createOAuth2Client();
     await drive.files.update({
         auth,
         fileId,
@@ -71,7 +71,7 @@ export async function moveFile(
  * 파일 다운로드 스트림 가져오기 (YouTube 업로드용)
  */
 export async function getFileStream(fileId: string) {
-    const auth = getOAuth2Client();
+    const auth = createOAuth2Client();
     const response = await drive.files.get(
         { auth, fileId, alt: 'media' },
         { responseType: 'stream' }

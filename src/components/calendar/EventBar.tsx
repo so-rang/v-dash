@@ -11,9 +11,12 @@ interface EventBarProps {
     onEdit: () => void;
     onDelete: () => void;
     dayIndex?: number;
+    isStart?: boolean;
+    isEnd?: boolean;
+    isWeekStart?: boolean;
 }
 
-export default function EventBar({ event, onEdit, onDelete, dayIndex = 0 }: EventBarProps) {
+export default function EventBar({ event, onEdit, onDelete, dayIndex = 0, isStart = true, isEnd = true, isWeekStart = false }: EventBarProps) {
     const [showTooltip, setShowTooltip] = useState(false);
     const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
     const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -21,7 +24,11 @@ export default function EventBar({ event, onEdit, onDelete, dayIndex = 0 }: Even
     const updateEvent = useEventStore(s => s.updateEvent);
 
     const color = getEventColor(event.colorId);
-    const statusClass = event.completed ? 'stage-bar--channel stage-bar--done' : 'stage-bar--channel';
+    const statusClass = [
+        event.completed ? 'stage-bar--done' : '',
+        !isStart ? 'stage-bar--continues-left' : '',
+        !isEnd ? 'stage-bar--continues-right' : '',
+    ].filter(Boolean).join(' ');
 
     const isLeftSide = dayIndex >= 4;
 
@@ -44,7 +51,7 @@ export default function EventBar({ event, onEdit, onDelete, dayIndex = 0 }: Even
         }
     }, [showTooltip, isLeftSide]);
 
-    const timeDisplay = event.allDay
+    const timeDisplay = (event.allDay || event.startTime === '00:00')
         ? '종일'
         : event.startTime && event.endTime
             ? `${event.startTime} – ${event.endTime}`
@@ -79,7 +86,9 @@ export default function EventBar({ event, onEdit, onDelete, dayIndex = 0 }: Even
                 )}
                 <div className="stage-bar-tooltip__title">{event.title}</div>
                 <div className="stage-bar-tooltip__meta">
-                    <span className="stage-bar-tooltip__date">🕐 {timeDisplay}</span>
+                    <span className="stage-bar-tooltip__date">
+                        🕐 {event.allDay ? '종일' : timeDisplay}
+                    </span>
                 </div>
                 {event.location && (
                     <div className="stage-bar-tooltip__loc">📍 {event.location}</div>
@@ -121,14 +130,21 @@ export default function EventBar({ event, onEdit, onDelete, dayIndex = 0 }: Even
                     cursor: 'pointer',
                     background: color,
                     boxShadow: event.completed ? 'none' : `0 0 var(--vivid-glow-radius, 6px) ${color}40`,
+                    borderTopLeftRadius: isStart ? 4 : 0,
+                    borderBottomLeftRadius: isStart ? 4 : 0,
+                    borderTopRightRadius: isEnd ? 4 : 0,
+                    borderBottomRightRadius: isEnd ? 4 : 0,
+                    marginLeft: isStart ? 0 : -1,
+                    marginRight: isEnd ? 0 : -1,
+                    width: `calc(100% + ${(!isStart ? 1 : 0) + (!isEnd ? 1 : 0)}px)`,
                 }}
             >
                 {/* 그룹 마커 */}
                 {event.groupId && (
                     <span className="stage-bar__group-dot" style={{ background: '#fff', opacity: 0.6 }} />
                 )}
-                <span className="truncate" style={{ fontSize: 11, flex: 1 }}>
-                    {!event.allDay && event.startTime && (
+                <span className="truncate" style={{ fontSize: 11, flex: 1, visibility: (isStart || isWeekStart) ? 'visible' : 'hidden' }}>
+                    {!event.allDay && event.startTime && event.startTime !== '00:00' && (
                         <span style={{ marginRight: 4, opacity: 0.85, fontSize: 10 }}>{event.startTime}</span>
                     )}
                     {event.title}

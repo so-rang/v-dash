@@ -6,7 +6,7 @@
  */
 
 import { google } from 'googleapis';
-import { getOAuth2Client } from './token';
+import { createOAuth2Client } from './token';
 
 const youtube = google.youtube('v3');
 
@@ -14,7 +14,7 @@ const youtube = google.youtube('v3');
  * 사용자의 YouTube 채널 목록 조회
  */
 export async function listMyChannels() {
-    const auth = getOAuth2Client();
+    const auth = createOAuth2Client();
     const response = await youtube.channels.list({
         auth,
         part: ['snippet', 'statistics'],
@@ -33,7 +33,7 @@ export async function checkVideoPublicStatus(videoId: string): Promise<{
     hasThumbnails: boolean;
     shouldVivid: boolean;
 }> {
-    const auth = getOAuth2Client();
+    const auth = createOAuth2Client();
     const response = await youtube.videos.list({
         auth,
         part: ['status', 'snippet'],
@@ -56,7 +56,7 @@ export async function checkVideoPublicStatus(videoId: string): Promise<{
  * 채널의 최근 영상 50개 조회 (페르소나 학습용)
  */
 export async function listRecentVideos(channelId: string) {
-    const auth = getOAuth2Client();
+    const auth = createOAuth2Client();
     const response = await youtube.search.list({
         auth,
         part: ['snippet'],
@@ -72,7 +72,7 @@ export async function listRecentVideos(channelId: string) {
  * 영상 댓글 조회 (감정 분석용)
  */
 export async function listVideoComments(videoId: string, maxResults = 100) {
-    const auth = getOAuth2Client();
+    const auth = createOAuth2Client();
     const response = await youtube.commentThreads.list({
         auth,
         part: ['snippet'],
