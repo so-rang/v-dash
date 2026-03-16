@@ -6,6 +6,7 @@ import { useEventStore, initDemoEvents, getEventColor } from '@/store/event-stor
 import { PanelLeftClose, PanelLeft, BarChart3, Settings, Calendar as CalendarIcon, Trash2 } from 'lucide-react';
 import type { Channel } from '@/types/channel';
 import type { CalendarEvent } from '@/types/stage';
+import AuthButton from '@/components/auth/AuthButton';
 
 const DEMO_CHANNELS: Channel[] = [
     {
@@ -155,6 +156,7 @@ export default function Sidebar({ collapsed, onToggle, activeNav, onNavChange, o
             </nav>
 
             <div className="sidebar__bottom">
+                <AuthButton collapsed={collapsed} />
                 <button
                     className={`sidebar__nav-item ${activeNav === 'trash' ? 'sidebar__nav-item--active' : ''}`}
                     onClick={() => onNavChange('trash')}

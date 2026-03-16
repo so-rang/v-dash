@@ -5,7 +5,7 @@
  */
 
 import { google } from 'googleapis';
-import { getOAuth2Client } from './token';
+import { getAuthenticatedClient } from './token';
 
 const calendar = google.calendar('v3');
 
@@ -21,6 +21,7 @@ const COLOR_MAP = {
  * 카렌더에 제작 일정 생성 (파스텔 상태)
  */
 export async function createProductionEvent(
+    userId: string,
     calendarId: string,
     data: {
         title: string;
@@ -29,7 +30,7 @@ export async function createProductionEvent(
         description?: string;
     }
 ) {
-    const auth = getOAuth2Client();
+    const auth = await getAuthenticatedClient(userId);
 
     const colorKey = `PASTEL_${data.stage === 'PLANNING' ? 'PLAN' : data.stage}` as keyof typeof COLOR_MAP;
 
@@ -59,8 +60,8 @@ export async function createProductionEvent(
 /**
  * 캘린더 이벤트를 비비드(Vivid)로 전환
  */
-export async function setEventVivid(calendarId: string, eventId: string) {
-    const auth = getOAuth2Client();
+export async function setEventVivid(userId: string, calendarId: string, eventId: string) {
+    const auth = await getAuthenticatedClient(userId);
 
     const response = await calendar.events.patch({
         auth,
@@ -78,11 +79,12 @@ export async function setEventVivid(calendarId: string, eventId: string) {
  * 캘린더 이벤트 날짜 이동
  */
 export async function moveEvent(
+    userId: string,
     calendarId: string,
     eventId: string,
     newDate: string
 ) {
-    const auth = getOAuth2Client();
+    const auth = await getAuthenticatedClient(userId);
 
     const response = await calendar.events.patch({
         auth,
@@ -103,4 +105,19 @@ export async function moveEvent(
     });
 
     return response.data;
+}
+
+/**
+ * 캘린더 이벤트 삭제
+ */
+export async function deleteEvent(userId: string, calendarId: string, eventId: string) {
+    const auth = await getAuthenticatedClient(userId);
+    
+    await calendar.events.delete({
+        auth,
+        calendarId,
+        eventId,
+    });
+    
+    return true;
 }
