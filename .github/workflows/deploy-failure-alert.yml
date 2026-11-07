@@ -1,0 +1,38 @@
+# 배포가 실패하면 GitHub 이슈로 알린다. 이슈는 저장소 주인에게 배정되어 GitHub 메일과 GitHub 모바일 앱 알림으로 온다.
+#
+# Vercel GitHub 연동이 커밋에 남기는 `Vercel` 상태가 failure · error 면 `deploy-failure` 라벨 이슈를 연다(Production · Preview 둘 다).
+# 같은 곳(Production 하나 · Preview 브랜치마다)이 또 실패하면 열린 이슈에 댓글을 달고, 다음 배포가 성공하면 댓글을 남기고 닫는다.
+#
+# 판단과 문구는 .github/scripts/deploy-failure-alert.mjs — so-rang/loere-clinic 에 있는 원본(테스트 포함)을 그대로 복사한 것이다.
+# 고칠 때는 원본을 고치고 다시 복사한다. status 워크플로는 기본 브랜치에 있는 파일로만 뜬다.
+name: Deploy failure alert
+
+on:
+  status:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  alert:
+    # 실패는 이슈를 열고, 성공은 열린 이슈가 있으면 닫는다. pending 이나 다른 서비스의 상태에는 job 을 띄우지 않는다.
+    if: >-
+      startsWith(github.event.context, 'Vercel') &&
+      contains(fromJSON('["failure","error","success"]'), github.event.state)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out the alert script from the default branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          sparse-checkout: .github/scripts/deploy-failure-alert.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Open, update or close the alert issue
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const { run } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/deploy-failure-alert.mjs`);
+            await run({ github, context, core });
